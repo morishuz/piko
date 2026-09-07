@@ -61,14 +61,16 @@ struct RemoteDropTableTests {
         #expect(!fulfilledPromise && !localUpload)
     }
 
-    @Test func hoverThenDropUsesOpenedDirectoryAndOriginalPasteboard() async throws {
+    @Test(.timeLimit(.minutes(1))) func hoverThenDropUsesOpenedDirectoryAndOriginalPasteboard() async throws {
         _ = NSApplication.shared
         let folder = DemoBackend.entry(id: 1, name: "Folder", parent: "/", folder: true)
         let file = DemoBackend.entry(id: 2, name: "File.txt", parent: "/", folder: false)
         let originalID = UUID(), spring = SpringLoadedNavigation()
-        var opened = false, accepted: [String] = []
+        let navigation = AsyncStream<Void>.makeStream()
+        defer { navigation.continuation.finish() }
+        var accepted: [String] = []
         var view = RemoteFileTable(files: [folder, file], selection: .constant([file.id]), isEnabled: true,
-            onOpen: { _ in opened = true }, onDownload: {}, browserDragID: originalID,
+            onOpen: { _ in navigation.continuation.yield(()) }, onDownload: {}, browserDragID: originalID,
             remoteOperation: { tokens, _ in tokens == [RemoteDragItem(browserID: originalID, handle: file.id)] ? .move : nil },
             onRemoteDrop: { _, path in accepted.append(path); return true }, springNavigation: spring,
             canUpload: false, onUploadDrop: { _ in false }, writePromise: { _, _ in })
@@ -80,11 +82,10 @@ struct RemoteDropTableTests {
         let writer = try #require(coordinator.tableView(table, pasteboardWriterForRow: 1))
         info.draggingPasteboard.writeObjects([writer])
         #expect(coordinator.tableView(table, validateDrop: info, proposedRow: 0, proposedDropOperation: .on) == .move)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while !opened && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        try #require(opened)
+        // Await the callback itself: sanitizer load can delay main-actor tasks
+        // beyond a short polling deadline. The test time limit bounds failures.
+        var opened = navigation.stream.makeAsyncIterator()
+        try #require(await opened.next() != nil)
         view.directory = folder.path
         view.browserDragID = UUID()
         // After navigation, the pointer can be over an ordinary file, between
