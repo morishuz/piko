@@ -6,8 +6,7 @@ DIST_DIR="$NATIVE_ROOT/dist"
 # Build and sign in a unique staging directory.
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/piko-apple-package.XXXXXX")
 trap 'rm -rf -- "$STAGE"' EXIT
-PACKAGE="$STAGE/Piko"
-APP="$PACKAGE/Piko.app"
+APP="$STAGE/Piko.app"
 CONTENTS="$APP/Contents"
 swift build --package-path "$NATIVE_ROOT" --configuration release
 BIN_DIR=$(swift build --package-path "$NATIVE_ROOT" --configuration release --show-bin-path)
@@ -22,18 +21,11 @@ if [[ -n "$(git -C "$NATIVE_ROOT" status --porcelain)" ]]; then DIRTY=true; fi
 cp "$NATIVE_ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
 cp "$NATIVE_ROOT/THIRD_PARTY_NOTICES.md" "$CONTENTS/Resources/Third Party Notices.md"
 cp "$NATIVE_ROOT/LICENSE" "$CONTENTS/Resources/LICENSE"
-for document in README.md CONTRIBUTING.md LICENSE THIRD_PARTY_NOTICES.md; do
-    cp "$NATIVE_ROOT/$document" "$PACKAGE/$document"
-done
-mkdir -p "$PACKAGE/images"
-cp "$NATIVE_ROOT/images/piki-screenshot.png" "$PACKAGE/images/piki-screenshot.png"
-cp "$BIN_DIR/PikoTools" "$PACKAGE/PikoTools"
 # Remove compiler debug paths before signing the distributed executables.
-xcrun strip -S "$CONTENTS/MacOS/Piko" "$PACKAGE/PikoTools"
+xcrun strip -S "$CONTENTS/MacOS/Piko"
 codesign --force --sign - "$CONTENTS/MacOS/Piko"
 codesign --force --sign - "$APP"
-codesign --force --sign - "$PACKAGE/PikoTools"
 ZIP="$DIST_DIR/Piko.zip"
-ditto -c -k --sequesterRsrc --keepParent "$PACKAGE" "$STAGE/package.zip"
+ditto -c -k --sequesterRsrc --keepParent "$APP" "$STAGE/package.zip"
 mv -f -- "$STAGE/package.zip" "$ZIP"
 print "$ZIP"

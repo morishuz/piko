@@ -9,5 +9,5 @@ zsh scripts/package.sh
 zsh scripts/verify-package.sh
 ```
 
-Packaging produces `dist/Piko.zip`. CI also runs release-mode tests and Address
+Packaging produces `dist/Piko.zip` containing only Piko.app. CI also runs release-mode tests and Address
 Sanitizer checks. Keep generated builds and diagnostic exports out of commits.

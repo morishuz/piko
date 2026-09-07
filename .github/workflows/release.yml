@@ -42,4 +42,4 @@ jobs:
             "release/Piko-macOS-arm64.zip" "release/Piko-macOS-arm64.zip.sha256" \
             --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease \
             --title "Piko $RELEASE_TAG (Apple Silicon)" \
-            --notes "Apple Silicon only; requires macOS 14 or newer. Ad-hoc signed, not Developer ID signed or notarized. Extract the ZIP and read README.md before opening. Review this draft before publishing."
+            --notes "Apple Silicon only; requires macOS 14 or newer. Ad-hoc signed, not Developer ID signed or notarized. Extract the ZIP and open Piko.app. Review this draft before publishing."
