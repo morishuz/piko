@@ -27,8 +27,9 @@ Available actions depend on your device. Existing files are never overwritten.
 
 [All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.15.4/Piko-macOS-arm64.zip.sha256)
 
-Extract the ZIP and open **Piko.app**. Not yet notarized; macOS may ask you to
-allow Piko in **System Settings → Privacy & Security**.
+This preview is not yet Developer ID signed or notarized.
+See the **[short user guide](docs/USER_GUIDE.md)** for installation, first-launch
+approval, safe deletion, and diagnostics.
 
 ## Getting started
 

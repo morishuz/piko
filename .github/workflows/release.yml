@@ -17,6 +17,7 @@ jobs:
 
   draft-release:
     # Manual runs only build artifacts; only a pushed version tag drafts a release.
+    # The reusable build must succeed, including the macOS 14 compatibility job.
     if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
@@ -42,5 +43,5 @@ jobs:
           gh release create "$RELEASE_TAG" \
             "release/Piko-macOS-arm64.zip" "release/Piko-macOS-arm64.zip.sha256" \
             --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease \
-            --title "Piko $RELEASE_TAG (Apple Silicon)" \
-            --notes "Apple Silicon only; requires macOS 14 or newer. Ad-hoc signed, not Developer ID signed or notarized. Extract the ZIP and open Piko.app. Review this draft before publishing."
+            --title "Piko $RELEASE_TAG Preview (Apple Silicon)" \
+            --notes "Apple Silicon only; requires macOS 14 or newer. Ad-hoc signed, not Developer ID signed or notarized. See the [user guide](https://github.com/$GITHUB_REPOSITORY/blob/$RELEASE_TAG/docs/USER_GUIDE.md) for installation, first-launch approval, safe deletion, and diagnostics. Review this draft and add changes and known limitations before publishing."
