@@ -23,9 +23,9 @@ Available actions depend on your device. Existing files are never overwritten.
 
 ## Download
 
-**[Download Piko for macOS — Apple Silicon](https://github.com/morishuz/piko/releases/download/v0.15.2/Piko-macOS-arm64.zip)**
+**[Download Piko for macOS — Apple Silicon](https://github.com/morishuz/piko/releases/download/v0.15.4/Piko-macOS-arm64.zip)**
 
-[All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.15.2/Piko-macOS-arm64.zip.sha256)
+[All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.15.4/Piko-macOS-arm64.zip.sha256)
 
 Extract the ZIP and open **Piko.app**. Not yet notarized; macOS may ask you to
 allow Piko in **System Settings → Privacy & Security**.
