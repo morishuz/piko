@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      release-tag: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+
+  draft-release:
+    # Manual runs only build artifacts; only a pushed version tag drafts a release.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      ARTIFACT_NAME: ${{ needs.build.outputs.artifact-name }}
+    steps:
+      - name: Download verified build
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "$ARTIFACT_NAME" --dir release
+          cd release
+          sha256sum --check "$ARTIFACT_NAME.zip.sha256"
+      - name: Create draft release
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "release/$ARTIFACT_NAME.zip" "release/$ARTIFACT_NAME.zip.sha256" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --draft \
+            --title "Piko $RELEASE_TAG (Apple Silicon)" \
+            --notes "Apple Silicon only; requires macOS 14 or newer. Ad-hoc signed, not Developer ID signed or notarized. Extract the ZIP and read README.md before opening. Review this draft before publishing."
