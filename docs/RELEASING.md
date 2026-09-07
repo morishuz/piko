@@ -33,13 +33,16 @@ and downloading them requires GitHub sign-in and repository read access.
 
 Push a tag matching the app version, such as `v0.15.1`, only when ready to create
 a release. The Release workflow builds and verifies the tagged source, then
-creates a **draft** with the archive and checksum. Review the files and release
-notes before publishing the draft manually. A manual Release workflow run only
+creates a **draft prerelease** with `Piko-macOS-arm64.zip` and its checksum.
+These fixed asset names make direct release links predictable. Review the files
+and release notes before publishing the draft manually. A manual Release workflow run only
 builds an artifact.
 
 Published releases in a public repository provide downloads without requiring a
-GitHub account. Once a release is published, add its download link to the README.
-Until then, the README points readers to Actions preview artifacts.
+GitHub account. The README links directly to the current preview's ZIP and checksum.
+Update the version in both links for each new published preview. Keep the previous
+release assets available so existing links continue to work. GitHub's
+`releases/latest` redirect excludes prereleases; use the versioned links for previews.
 
 Current packages are ad-hoc signed, not Developer ID signed or notarized. Describe
 that accurately in preview releases. Developer ID signing and notarization remain

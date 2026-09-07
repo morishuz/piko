@@ -23,18 +23,12 @@ Available actions depend on your device. Existing files are never overwritten.
 
 ## Download
 
-Preview builds are available through this repository's **Actions** tab:
+**[Download Piko for macOS — Apple Silicon](https://github.com/morishuz/piko/releases/download/v0.15.1/Piko-macOS-arm64.zip)**
 
-1. Open the latest successful **CI** run with a **Piko** artifact.
-2. Under **Artifacts**, download `Piko-…-arm64`.
-3. Extract the download, then the Piko ZIP inside it, and open **Piko.app**.
+[All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.15.1/Piko-macOS-arm64.zip.sha256)
 
-You must be signed into GitHub. While the repository is private, you also need
-access to it. Builds expire after 30 days. If no Piko artifact is listed, a
-preview download is not available yet.
-
-Previews are not yet notarized by Apple. macOS may require you to approve opening
-Piko in **System Settings → Privacy & Security**.
+Extract the ZIP and open **Piko.app**. Not yet notarized; macOS may ask you to
+allow Piko in **System Settings → Privacy & Security**.
 
 ## Getting started
 
