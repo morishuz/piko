@@ -22,15 +22,11 @@ if [[ -n "$(git -C "$NATIVE_ROOT" status --porcelain)" ]]; then DIRTY=true; fi
 cp "$NATIVE_ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
 cp "$NATIVE_ROOT/THIRD_PARTY_NOTICES.md" "$CONTENTS/Resources/Third Party Notices.md"
 cp "$NATIVE_ROOT/LICENSE" "$CONTENTS/Resources/LICENSE"
-for document in README.md CONTRIBUTING.md ROADMAP.md LICENSE THIRD_PARTY_NOTICES.md SECURITY.md; do
+for document in README.md CONTRIBUTING.md LICENSE THIRD_PARTY_NOTICES.md; do
     cp "$NATIVE_ROOT/$document" "$PACKAGE/$document"
 done
 mkdir -p "$PACKAGE/images"
 cp "$NATIVE_ROOT/images/piki-screenshot.png" "$PACKAGE/images/piki-screenshot.png"
-mkdir -p "$PACKAGE/docs"
-for document in TESTING.md DIAGNOSTICS.md DEVICE_BIN.md REMOTE_DRAG_DROP.md PHOTO_THUMBNAILS.md RELEASING.md; do
-    cp "$NATIVE_ROOT/docs/$document" "$PACKAGE/docs/$document"
-done
 cp "$BIN_DIR/PikoTools" "$PACKAGE/PikoTools"
 # Remove compiler debug paths before signing the distributed executables.
 xcrun strip -S "$CONTENTS/MacOS/Piko" "$PACKAGE/PikoTools"

@@ -10,11 +10,8 @@ APP="$PACKAGE/Piko.app"
 cmp "$NATIVE_ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 cmp "$NATIVE_ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
 cmp "$NATIVE_ROOT/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/Third Party Notices.md"
-for document in README.md CONTRIBUTING.md ROADMAP.md LICENSE THIRD_PARTY_NOTICES.md SECURITY.md; do
+for document in README.md CONTRIBUTING.md LICENSE THIRD_PARTY_NOTICES.md; do
     cmp "$NATIVE_ROOT/$document" "$PACKAGE/$document"
-done
-for document in TESTING.md DIAGNOSTICS.md DEVICE_BIN.md REMOTE_DRAG_DROP.md PHOTO_THUMBNAILS.md RELEASING.md; do
-    cmp "$NATIVE_ROOT/docs/$document" "$PACKAGE/docs/$document"
 done
 cmp "$NATIVE_ROOT/images/piki-screenshot.png" "$PACKAGE/images/piki-screenshot.png"
 for key in CFBundleName CFBundleDisplayName CFBundleExecutable; do

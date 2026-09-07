@@ -44,6 +44,5 @@ requires separate consent. You choose whether to export, share, or delete them.
 
 ## More
 
-[Build from source](CONTRIBUTING.md) · [Device bin](docs/DEVICE_BIN.md) ·
-[Diagnostics](docs/DIAGNOSTICS.md) · [MIT license](LICENSE) ·
-[Third-party acknowledgments](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
+[Build from source](CONTRIBUTING.md) · [MIT license](LICENSE) ·
+[Third-party acknowledgments](THIRD_PARTY_NOTICES.md)
