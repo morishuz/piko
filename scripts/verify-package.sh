@@ -40,6 +40,7 @@ for key in CFBundleVersion CFBundleShortVersionString; do
 done
 for binary in "$APP/Contents/MacOS/Piko"; do
     [[ $(lipo -archs "$binary") == arm64 ]]
+    [[ $(xcrun vtool -show-build "$binary" | awk '$1 == "minos" { print $2 }') == 14.0 ]]
     if strings "$binary" | awk -v source_root="$NATIVE_ROOT" '
         index($0, source_root) { found = 1 }
         END { exit found ? 0 : 1 }

@@ -17,7 +17,7 @@ public enum KitError: LocalizedError, Equatable {
 }
 
 public struct IntegrityKit {
-    public static let toolVersion = "0.15.2"
+    public static let toolVersion = "0.15.3"
 
     struct File: Codable, Equatable {
         let path: String

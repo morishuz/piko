@@ -17,11 +17,11 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-26
     timeout-minutes: 30
     env:
-      # macos-14 defaults to Xcode 15.4 / Swift 5.10; this package needs Swift 6.
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      # Match the local release toolchain; retain macOS 14 as the deployment target.
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     outputs:
       artifact-name: ${{ steps.metadata.outputs.artifact-name }}
     steps:
@@ -32,6 +32,8 @@ jobs:
         run: |
           test "$(uname -m)" = arm64
           xcodebuild -version
+          test "$(xcodebuild -version)" = $'Xcode 26.6\nBuild version 17F113'
+          test "$(xcrun --sdk macosx --show-sdk-version)" = 26.5
           swift --version
       - name: Validate version
         id: metadata
@@ -87,3 +89,50 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+
+  compatibility:
+    name: Launch packaged app on macOS 14
+    needs: build
+    runs-on: macos-14
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ARTIFACT_NAME: ${{ needs.build.outputs.artifact-name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download and verify the release binary
+        run: |
+          test "$(sw_vers -productVersion | cut -d. -f1)" = 14
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$ARTIFACT_NAME" --dir dist
+          cd dist
+          shasum -a 256 --check "$ARTIFACT_NAME.zip.sha256"
+          mv "$ARTIFACT_NAME.zip" Piko.zip
+      - name: Verify package on oldest supported macOS
+        run: zsh scripts/verify-package.sh
+      - name: Check app startup without attached devices
+        run: |
+          ditto -x -k dist/Piko.zip "$RUNNER_TEMP/piko-launch"
+          python3 - "$RUNNER_TEMP/piko-launch/Piko.app/Contents/MacOS/Piko" <<'PYTHON'
+          import subprocess, sys
+          app = subprocess.Popen([sys.argv[1]])
+          try:
+              try:
+                  code = app.wait(timeout=10)
+              except subprocess.TimeoutExpired:
+                  print('Piko remained running on macOS 14 for 10 seconds.')
+              else:
+                  raise SystemExit(f'Piko exited unexpectedly during startup: {code}')
+          finally:
+              if app.poll() is None:
+                  app.terminate()
+                  try:
+                      app.wait(timeout=10)
+                  except subprocess.TimeoutExpired:
+                      app.kill()
+                      app.wait()
+          PYTHON
