@@ -37,7 +37,16 @@ final class DeviceBrowserModel: ObservableObject {
     @Published var fileViewMode: FileViewMode = .list
     @Published private(set) var isGeneratingThumbnails = false
     @Published private(set) var browsingIssue: String?
-    @Published var operationError: String?
+    @Published var operationError: String? {
+        didSet {
+            if operationError != nil, operationError != oldValue { connectionRetryPending = false }
+        }
+    }
+    @Published var connectionRetryPending = false
+    // Connection problems are already explained beside the Connect button.
+    var shouldPresentOperationError: Bool {
+        operationError != nil && !connectionRetryPending
+    }
     @Published var transferConfirmation: String?
     @Published private(set) var uploadNeedsReconnect = false
     @Published private(set) var uploadCapabilityAvailable = false
@@ -92,6 +101,7 @@ final class DeviceBrowserModel: ObservableObject {
     var binHelp: String {
         if isViewingBin { return "You are viewing the Bin" }
         if let writeRestriction { return writeRestriction }
+        if selectedStorage.map({ $0.info.accessCapability != 0 }) == true { return "Bin unavailable on read-only storage" }
         if binExists != true { return "Preparing the Bin before enabling writes" }
         if uploadNeedsReconnect { return "Reconnect the device before using the Bin" }
         if isTransferring || isLoadingDirectory || isQuitting { return "Wait for the current operation to finish" }
@@ -240,9 +250,8 @@ final class DeviceBrowserModel: ObservableObject {
                     let key = PhotoThumbnailKey(connection: generation, storageID: storageID, file: file)
                     self.thumbnails.storeOriginal(image, for: key)
                 })
-            if !transfers.summary.failed.isEmpty {
-                operationError = "Could not generate thumbnails for \(transfers.summary.failed.count) photo(s). These files keep their icons; completed previews remain available."
-            }
+            // Missing previews keep their file icons; no modal is needed.
+
         } catch is CancellationError {
             // Completed previews stay cached; remaining originals are never read.
         } catch let error as BackendSessionError {
@@ -275,6 +284,11 @@ final class DeviceBrowserModel: ObservableObject {
         Task { await connectAndLoad() }
     }
 
+    func dismissOperationError() {
+        connectionRetryPending = false
+        operationError = nil
+    }
+
     func connectAndLoad() async {
         guard isDeviceAvailable, !isQuitting, state != .connecting, state != .recovering, state != .disconnecting,
             !isConnected, !isTransferring
@@ -283,6 +297,7 @@ final class DeviceBrowserModel: ObservableObject {
         }
         sessionGeneration += 1
         let session = sessionGeneration
+        connectionRetryPending = false
         state = .connecting
         browsingIssue = nil
         files = []
@@ -327,8 +342,10 @@ final class DeviceBrowserModel: ObservableObject {
             guard session == sessionGeneration else { return }
             isLoadingDirectory = false
             selectedStorageID = nil
-            state = .failed(error.localizedDescription)
-            operationError = error.localizedDescription
+            let cancelled = error is CancellationError
+            state = cancelled ? .disconnected : .failed(error.localizedDescription)
+            operationError = cancelled ? nil : error.localizedDescription
+            connectionRetryPending = !cancelled
             storages = []
             storageWriteCapabilities = [:]
             binReadiness = [:]
@@ -357,9 +374,11 @@ final class DeviceBrowserModel: ObservableObject {
         markDeviceUnavailable()
         while isBusy { try? await Task.sleep(for: .milliseconds(50)) }
         let error = operationError
+        let retryConnection = connectionRetryPending
         let result = transferConfirmation
         await disconnectAndReset()
         operationError = error
+        connectionRetryPending = retryConnection
         transferConfirmation = result
     }
 
@@ -1169,6 +1188,11 @@ final class DeviceBrowserModel: ObservableObject {
         storageWriteCapabilities = [:]
         for storage in storages {
             guard !isQuitting, isDeviceAvailable else { throw CancellationError() }
+            if storage.info.accessCapability != 0 {
+                // Read-only media needs no Bin preparation or failure warning.
+                storageWriteCapabilities[storage.id] = StorageWriteCapabilities(upload: false, move: false)
+                continue
+            }
             do {
                 guard let deviceBin else { throw BinError.unsupported }
                 let listing = try await deviceBin.prepare(storageID: storage.id)
@@ -1222,6 +1246,7 @@ final class DeviceBrowserModel: ObservableObject {
     }
 
     private func reset() {
+        connectionRetryPending = false
         binFolderPath = nil
         uploadNeedsReconnect = false
         binDeletionAvailable = false

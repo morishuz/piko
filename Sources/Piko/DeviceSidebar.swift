@@ -223,9 +223,13 @@ private struct SidebarTransferView: View {
                         .help(coordinator.canCancelActiveTransfer || coordinator.isPlanning
                             ? "Cancel this device’s transfer" : "Stop after the current file finishes")
                 }.font(.caption)
-                if let progress = coordinator.progress, let total = progress.totalBytes, total > 0 {
-                    ProgressView(value: Double(min(progress.bytesTransferred, total)), total: Double(total))
+                if let fraction = coordinator.overallFraction, coordinator.plannedCount > 0 {
+                    ProgressView(value: fraction)
                 } else { ProgressView().controlSize(.small) }
+                if coordinator.plannedCount > 0 {
+                    Text("\(coordinator.batchProgress.processedFileCount) of \(coordinator.batchProgress.fileCount) files processed")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
     }

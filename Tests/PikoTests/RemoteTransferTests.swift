@@ -235,6 +235,21 @@ struct RemoteTransferTests {
         await manager.prepareToQuit()
     }
 
+    @Test func batchProgressIncludesBothCopyStagesAndAllFiles() async throws {
+        let source = RelayDevice(), destination = RelayDevice(seed: false, pause: .upload)
+        let manager = await setup(source, destination)
+        let tokens = drag(manager, names: ["photo.txt", "second.txt"])
+        let job = try await accept(manager, tokens, to: manager.devices[1], storageID: 1, directory: "/")
+        try await waitFor { await destination.active && job.phase == .uploading }
+        #expect(job.batchProgress.fileCount == 2 && job.batchProgress.processedFileCount == 0)
+        // One of two equal-sized files has finished only its download half.
+        #expect(job.overallFraction(downloadFraction: job.download.overallFraction ?? 0,
+                                    uploadFraction: job.upload.overallFraction ?? 0) == 0.25)
+        job.cancel()
+        try await finish(job)
+        await manager.prepareToQuit()
+    }
+
     @Test func copyBetweenDevicesPreservesHierarchyEmptyFoldersAndSource() async throws {
         let source = RelayDevice(), destination = RelayDevice(seed: false)
         let manager = await setup(source, destination)
@@ -249,6 +264,8 @@ struct RemoteTransferTests {
         #expect(await source.bytes("/photo.txt") == Data("PHOTO".utf8))
         #expect(await source.bytes("/Album/nested.txt") == Data("INNER".utf8))
         #expect(job.results.filter { $0.outcome == .copied }.count == 2)
+        #expect(job.batchProgress.fileCount == 2 && job.batchProgress.processedFileCount == 2)
+        #expect(job.overallFraction(downloadFraction: 0, uploadFraction: 0) == 1)
         #expect(source !== destination)
         #expect(target.browser.transferConfirmation == nil)
         await manager.prepareToQuit()

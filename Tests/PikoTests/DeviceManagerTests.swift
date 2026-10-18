@@ -19,6 +19,7 @@ private actor MultiDeviceBackend: MTPUploadBackend, MTPFreshSessionBackend {
     nonisolated let capabilities = BackendCapabilities(reportsProgress: true, canCancelActiveTransfer: false)
     private var connected = false
     private var locked = false
+    private(set) var connectionAttempts = 0
     private var failedPath: String?
     private var loseSessionOnNextListing = false
     func failRecoveryListing() { loseSessionOnNextListing = true; failedPath = "/" }
@@ -40,6 +41,7 @@ private actor MultiDeviceBackend: MTPUploadBackend, MTPFreshSessionBackend {
         connected ? MTPDeviceDetails(manufacturer: "Example", model: "Phone", firmware: "1.2", serialNumber: serial) : nil
     }
     func connect() throws -> [MTPStorage] {
+        connectionAttempts += 1
         guard !connected else { throw BackendError.busy }
         if locked { throw BackendError.noStorage }
         connected = true
@@ -86,6 +88,27 @@ struct DeviceManagerTests {
             try await Task.sleep(for: .milliseconds(2))
         }
         Issue.record("Timed out waiting for fixture")
+    }
+
+    @Test func connectionFailureStaysInlineUntilExplicitRetry() async {
+        let backend = MultiDeviceBackend()
+        await backend.setLocked(true)
+        let browser = DeviceBrowserModel(client: backend)
+        await browser.connectAndLoad()
+        #expect(browser.connectionRetryPending && !browser.shouldPresentOperationError)
+        #expect(browser.operationError != nil && !browser.isConnected)
+        await backend.setLocked(false)
+        browser.dismissOperationError()
+        #expect(await backend.connectionAttempts == 1)
+        #expect(!browser.isConnected)
+        await browser.connectAndLoad()
+        #expect(browser.isConnected && browser.operationError == nil && !browser.connectionRetryPending)
+        #expect(await backend.connectionAttempts == 2)
+        browser.operationError = "A transfer failed"
+        #expect(browser.shouldPresentOperationError)
+        browser.dismissOperationError()
+        #expect(await backend.connectionAttempts == 2)
+        await browser.disconnectAndReset()
     }
 
     @Test func discoveryNeverConnectsAndSelectionRetainsIndependentBrowsers() async throws {
@@ -288,6 +311,7 @@ struct DeviceManagerTests {
         #expect(!browser.isConnected && !browser.isBusy)
         #expect(browser.storages.isEmpty && browser.files.isEmpty)
         #expect(browser.operationError != nil)
+        #expect(browser.connectionRetryPending && !browser.shouldPresentOperationError)
         #expect(await backend.disconnects == 1)
         await backend.failListing(nil)
         await browser.connectAndLoad()

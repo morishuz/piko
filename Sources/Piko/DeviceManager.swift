@@ -233,6 +233,7 @@ final class DeviceManager: ObservableObject {
             let errors = retired.compactMap { $0.browser.operationError }
             let results = retired.compactMap { $0.browser.transferConfirmation }
             browser.operationError = errors.isEmpty ? nil : errors.joined(separator: "\n\n")
+            browser.connectionRetryPending = !errors.isEmpty && retired.contains { $0.browser.connectionRetryPending }
             browser.transferConfirmation = results.isEmpty ? nil : results.joined(separator: "\n\n")
             if retired.contains(where: { $0.id == selectedDeviceID }) { selectedDeviceID = replacement.id }
             devices.removeAll { device in retired.contains { $0 === device } }

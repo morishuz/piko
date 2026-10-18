@@ -19,6 +19,8 @@ approval again. See [Apple's opening instructions](https://support.apple.com/en-
 
 Connect your device with a USB data cable, unlock it, and select **File Transfer**
 if prompted. Close other apps using the device, then click **Connect** in Piko.
+If connecting fails, follow the message in Piko, then click **Try Again**.
+Connection problems do not open a separate pop-up.
 
 ## Before moving or deleting files
 

@@ -33,20 +33,19 @@ struct DeviceContentView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Color(nsColor: .controlBackgroundColor))
         .alert(
-            "\(deviceName) — Piko Error",
+            "\(deviceName) — Unable to Complete",
             isPresented: Binding(
-                get: { model.operationError != nil },
+                get: { model.shouldPresentOperationError },
                 set: { if !$0 { model.operationError = nil } }
             )
         ) {
-            Button("OK", role: .cancel) {
-                model.operationError = nil
-            }
+            Button("OK", role: .cancel) { model.dismissOperationError() }
         } message: {
-            Text(model.operationError ?? "Unknown error")
+            Text(model.operationError ?? "Please try again.")
         }
+
         .alert(
             "\(deviceName) — Transfer Needs Attention",
             isPresented: Binding(
@@ -111,7 +110,21 @@ struct DeviceContentView: View {
     private var browser: some View {
         VStack(spacing: 0) {
             HStack {
-                Image(systemName: "externaldrive.connected.to.line.below")
+                if model.selectedStorage.map({ $0.info.accessCapability != 0 }) == true || model.writeRestriction != nil {
+                    Image(systemName: "lock")
+                        .foregroundStyle(.secondary)
+                        .help(model.writeRestriction ?? "Read-only storage")
+                        .accessibilityLabel("Read-only storage")
+                }
+                Button {
+                    Task { await model.load(path: "/") }
+                } label: {
+                    Image(systemName: "externaldrive.connected.to.line.below")
+                }
+                .buttonStyle(.plain)
+                .disabled(!model.isConnected || model.isBusy || model.isQuitting)
+                .help("Open storage root")
+                .accessibilityLabel("Open storage root")
                 ScrollView(.horizontal, showsIndicators: false) {
                     let crumbs = model.breadcrumbs
                     HStack(spacing: 5) {
@@ -152,13 +165,6 @@ struct DeviceContentView: View {
             .frame(height: 38)
 
             Divider()
-
-            if let restriction = model.writeRestriction {
-                Label(restriction, systemImage: "lock")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-            }
 
             if let issue = model.browsingIssue {
                 Label(issue, systemImage: "exclamationmark.triangle")
@@ -280,7 +286,7 @@ struct DeviceContentView: View {
         } description: {
             Text(disconnectedDescription)
         } actions: {
-            Button("Connect") {
+            Button(model.connectionRetryPending ? "Try Again" : "Connect") {
                 model.connect()
             }
             .keyboardShortcut(.defaultAction)
@@ -317,10 +323,10 @@ struct DeviceContentView: View {
             } else {
                 return model.selectedStorage?.displayName ?? "Connected"
             }
-        case let .failed(message):
-            return message
-        case let .reconnectRequired(message):
-            return message
+        case .failed:
+            return "Not connected"
+        case .reconnectRequired:
+            return "Reconnect needed"
         }
     }
 
@@ -344,44 +350,15 @@ private struct TransferStatusView: View {
 
     var body: some View {
         if coordinator.isRunning {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(activity.map { "\($0): \(coordinator.results.count) of \(coordinator.plannedCount)" } ?? (coordinator.isPlanning ? (coordinator.isUploading ? "Preparing upload…" : "Preparing file list…") : "\(coordinator.isUploading ? "Upload" : "Download"): \(coordinator.results.count) of \(coordinator.plannedCount) items processed"))
-                    Spacer()
-                    if coordinator.isPlanning || coordinator.canCancelActiveTransfer {
-                        Button(coordinator.stopRequested ? "Cancelling…" : (coordinator.isPlanning ? "Cancel Preparation" : "Cancel Transfer")) {
-                            coordinator.cancelTransfer()
-                        }
-                        .disabled(coordinator.stopRequested)
-                    } else {
-                        Button(coordinator.stopRequested ? "Stopping after current file…" : "Stop After Current File") {
-                            coordinator.stopAfterCurrentFile()
-                        }
-                        .disabled(coordinator.stopRequested)
-                    }
-                }
+            HStack(spacing: 6) {
+                Text(activity ?? (coordinator.isPlanning ? "Preparing…" : coordinator.isUploading ? "Uploading" : "Downloading"))
                 if let progress = coordinator.progress {
-                    Text(progress.fileName).lineLimit(1)
-                    if let total = progress.totalBytes, total > 0 {
-                        ProgressView(value: Double(min(progress.bytesTransferred, total)), total: Double(total))
-                    } else { ProgressView().controlSize(.small) }
-                    Text(ByteCountFormatter.string(fromByteCount: progress.bytesTransferred, countStyle: .file) + " transferred")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(progress.fileName).lineLimit(1).truncationMode(.middle)
                 }
-                if coordinator.canCancelActiveTransfer, !coordinator.isPlanning {
-                    Text(coordinator.isUploading
-                        ? "Cancel finishes the current small part, then removes the incomplete upload."
-                        : "Cancel stops after the current small part finishes.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if !coordinator.canCancelActiveTransfer, !coordinator.isPlanning {
-                    Text("The active file cannot be interrupted safely. Stop takes effect after it finishes or the device times out.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Spacer(minLength: 0)
             }
-            .padding(12)
-            .background(.bar)
+            .font(.caption).foregroundStyle(.secondary)
+            .padding(.horizontal, 12).padding(.vertical, 6)
         }
     }
 }

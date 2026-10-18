@@ -232,37 +232,55 @@ struct RemoteTransferStatusView: View {
     @ObservedObject var transfer: RemoteTransferCoordinator
     var compact = false
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if !compact { Text(transfer.title).fontWeight(.medium) }
-            HStack(alignment: .top) {
-                Text(transfer.status).lineLimit(compact ? 2 : 1)
-                Spacer(minLength: 4)
-                if let active = transfer.active {
-                    RemoteTransferCancelButton(transfer: transfer, coordinator: active)
-                } else {
-                    Button(transfer.stopRequested ? "Stopping…" : "Cancel") { transfer.cancel() }
-                        .buttonStyle(.link).disabled(transfer.stopRequested)
-                        .help("Finishes the current device command, then stops.")
+        if compact {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text(transfer.request.operation == .copy ? "Copying…" : "Moving…")
+                    Spacer(minLength: 4)
+                    if let active = transfer.active {
+                        RemoteTransferCancelButton(transfer: transfer, coordinator: active)
+                    } else {
+                        Button(transfer.stopRequested ? "Stopping…" : "Cancel") { transfer.cancel() }
+                            .buttonStyle(.link).disabled(transfer.stopRequested)
+                    }
                 }
+                RemoteTransferPhaseProgress(transfer: transfer)
+                if transfer.plannedCount > 0 {
+                    if transfer.request.operation == .copy {
+                        Text("\(transfer.batchProgress.processedFileCount) of \(transfer.batchProgress.fileCount) files processed")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("\(transfer.results.count) of \(transfer.plannedCount) items processed")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }.font(.caption)
+        } else {
+            HStack {
+                Text(transfer.status).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 0)
             }
-            if let coordinator = transfer.active {
-                RemoteTransferPhaseProgress(coordinator: coordinator, uploading: transfer.phase == .uploading)
-            }
-            Text("\(transfer.results.count) of \(transfer.plannedCount) items processed")
-                .foregroundStyle(.secondary)
+            .font(.caption).foregroundStyle(.secondary)
+            .padding(.horizontal, 12).padding(.vertical, 6)
         }
-        .font(.caption)
-        .padding(compact ? 0 : 12)
     }
 }
 
 private struct RemoteTransferPhaseProgress: View {
-    @ObservedObject var coordinator: TransferCoordinator
-    let uploading: Bool
+    @ObservedObject var transfer: RemoteTransferCoordinator
+    @ObservedObject var download: TransferCoordinator
+    @ObservedObject var upload: TransferCoordinator
+
+    init(transfer: RemoteTransferCoordinator) {
+        self.transfer = transfer
+        download = transfer.download
+        upload = transfer.upload
+    }
+
     var body: some View {
-        if let progress = coordinator.progress, let total = progress.totalBytes, total > 0 {
-            let fraction = Double(min(progress.bytesTransferred, total)) / Double(total)
-            ProgressView(value: (uploading ? 0.5 : 0) + fraction * 0.5)
+        if let fraction = transfer.overallFraction(downloadFraction: download.overallFraction ?? 0,
+                                                   uploadFraction: upload.overallFraction ?? 0) {
+            ProgressView(value: fraction)
         } else { ProgressView().controlSize(.small) }
     }
 }
@@ -272,7 +290,7 @@ private struct RemoteTransferCancelButton: View {
     @ObservedObject var coordinator: TransferCoordinator
     var body: some View {
         Button(transfer.stopRequested ? "Stopping…" : coordinator.isPlanning || coordinator.canCancelActiveTransfer
-            ? "Cancel" : "Stop After Current File") { transfer.cancel() }
+            ? "Cancel" : "Stop") { transfer.cancel() }
             .buttonStyle(.link).disabled(transfer.stopRequested)
             .help("Stops at the next safe boundary. Completed copies and original files are kept.")
     }

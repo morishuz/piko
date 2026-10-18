@@ -11,7 +11,21 @@ final class TransferCoordinator: ObservableObject {
     @Published private(set) var stopRequested = false
     private(set) var cancellationRequested = false
     @Published private(set) var progress: TransferProgress?
-    @Published private(set) var results: [TransferResult] = []
+    @Published private(set) var results: [TransferResult] = [] {
+        didSet {
+            for result in results.dropFirst(oldValue.count) {
+                switch result.outcome {
+                case .notAttempted, .uploadCancelled: break
+                default: batchProgress.resolve(result.source)
+                }
+            }
+        }
+    }
+    @Published private(set) var batchProgress = BatchProgress()
+    private var activeSource: String?
+    var overallFraction: Double? {
+        batchProgress.fraction(activePath: activeSource, activeBytes: Double(progress?.bytesTransferred ?? 0))
+    }
     @Published private(set) var plannedCount = 0
     var summary: TransferSummary { TransferSummary(results) }
 
@@ -97,6 +111,7 @@ final class TransferCoordinator: ObservableObject {
         planningCancellation = nil
         if stopRequested { throw CancellationError() }
         plannedCount = items.count
+        batchProgress = BatchProgress(files: items.filter { !$0.file.isFolder }.map { ($0.file.path, $0.file.size) })
         isPlanning = false
         var terminalSessionError: BackendSessionError?
 
@@ -126,7 +141,7 @@ final class TransferCoordinator: ObservableObject {
                 let staging = try output.makeStagingDirectory()
                 defer { try? FileManager.default.removeItem(at: staging) }
                 let handler = beginProgress(
-                    fileName: item.file.name,
+                    fileName: item.file.name, source: item.file.path,
                     totalBytes: item.file.size >= 0 ? item.file.size : nil)
                 try await performCancellable(interruptible: canCancelActiveTransfer) {
                     try await backend.download(
@@ -188,6 +203,9 @@ final class TransferCoordinator: ObservableObject {
             throw UploadError.unsupportedBackend
         }
         plannedCount = items.count
+        batchProgress = BatchProgress(files: items.compactMap { item in
+            item.plannedFileSize.map { (item.source.path, $0) }
+        })
         isPlanning = false
         planningCancellation = nil
         var blockedSubtrees: [[String]: TransferResult.Outcome] = [:]
@@ -266,7 +284,7 @@ final class TransferCoordinator: ObservableObject {
                     results.append(TransferResult(source: source.path, outcome: .notAttempted))
                     continue
                 }
-                let handler = beginProgress(fileName: source.lastPathComponent, totalBytes: snapshot.size)
+                let handler = beginProgress(fileName: source.lastPathComponent, source: source.path, totalBytes: snapshot.size)
                 writeAttempted = true
                 let disposition = try await performCancellable(interruptible: canCancelActiveTransfer) {
                     try await backend.upload(
@@ -356,6 +374,7 @@ final class TransferCoordinator: ObservableObject {
         stopRequested = false
         cancellationRequested = false
         results = []
+        batchProgress = BatchProgress()
         plannedCount = 0
         endProgress()
     }
@@ -404,9 +423,10 @@ final class TransferCoordinator: ObservableObject {
         }
     }
 
-    private func beginProgress(fileName: String, totalBytes: Int64?) -> ProgressHandler {
+    private func beginProgress(fileName: String, source: String, totalBytes: Int64?) -> ProgressHandler {
         let token = UUID()
         progressToken = token
+        activeSource = source
         progress = TransferProgress(fileName: fileName, bytesTransferred: 0, totalBytes: totalBytes)
         return { [weak self] update in
             Task { @MainActor [weak self] in
@@ -421,6 +441,7 @@ final class TransferCoordinator: ObservableObject {
 
     private func endProgress() {
         progressToken = nil
+        activeSource = nil
         progress = nil
     }
 

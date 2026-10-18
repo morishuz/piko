@@ -47,7 +47,8 @@ import Testing
         #expect(model.isConnected)
         #expect(model.thumbnails.count == 1)
         #expect(model.transfers.summary.failed.count == 1)
-        #expect(model.operationError?.contains("1 photo") == true)
+        #expect(model.operationError == nil)
+        #expect(!model.shouldPresentOperationError)
         #expect(await device.snapshot().closed == false)
         await model.disconnectAndReset()
     }

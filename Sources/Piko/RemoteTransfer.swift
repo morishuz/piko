@@ -54,7 +54,33 @@ final class RemoteTransferCoordinator: ObservableObject {
     @Published private(set) var stopRequested = false
     @Published private(set) var fileName = ""
     @Published private(set) var plannedCount = 0
-    @Published private(set) var results: [RemoteTransferResult] = []
+    @Published private(set) var results: [RemoteTransferResult] = [] {
+        didSet {
+            for result in results.dropFirst(oldValue.count) {
+                switch result.outcome {
+                case .notAttempted, .cancelled: break
+                default: batchProgress.resolve(result.path)
+                }
+            }
+        }
+    }
+    @Published private(set) var batchProgress = BatchProgress()
+    private var activeCopyPath: String?
+    private var activeCopySize: Int64 = 0
+
+    func overallFraction(downloadFraction: Double, uploadFraction: Double) -> Double? {
+        if request.operation == .move {
+            return plannedCount == 0 ? nil : Double(results.count) / Double(plannedCount)
+        }
+        guard plannedCount > 0 else { return nil }
+        let portion: Double
+        switch phase {
+        case .downloading: portion = downloadFraction * 0.5
+        case .uploading: portion = 0.5 + uploadFraction * 0.5
+        default: portion = 0
+        }
+        return batchProgress.fraction(activePath: activeCopyPath, activeBytes: Double(max(0, activeCopySize)) * portion)
+    }
     private(set) var sourceSessionError: BackendSessionError?
     private(set) var destinationSessionError: BackendSessionError?
     private var planningCancellation = PlanningCancellation()
@@ -78,8 +104,8 @@ final class RemoteTransferCoordinator: ObservableObject {
         switch phase {
         case .preparing: "Preparing transfer…"
         case .moving: "Moving \(fileName)"
-        case .downloading: "Downloading \(fileName) to temporary storage"
-        case .uploading: "Uploading \(fileName) to destination"
+        case .downloading: "Downloading \(fileName)"
+        case .uploading: "Uploading \(fileName)"
         case .creatingFolder: "Creating \(fileName)"
         case .finished: "Transfer finished"
         }
@@ -197,6 +223,7 @@ final class RemoteTransferCoordinator: ObservableObject {
             storageID: request.source.storageID, cancelled: { cancellation.isCancelled })
         try checkpoint()
         plannedCount = plan.count
+        batchProgress = BatchProgress(files: plan.filter { !$0.file.isFolder }.map { ($0.file.path, $0.file.size) })
         if plan.contains(where: { $0.file.isFolder }), !(destination is any MTPFolderUploadBackend) {
             throw UploadError.unsupportedBackend
         }
@@ -207,6 +234,9 @@ final class RemoteTransferCoordinator: ObservableObject {
         for (index, item) in plan.enumerated() {
             if stopRequested { appendPending(plan[index...].map(\.file.path)); break }
             let file = item.file
+            phase = .preparing
+            activeCopyPath = file.path
+            activeCopySize = file.size
             fileName = file.name
             if let blocked = blocked.first(where: { item.components.starts(with: $0.0) }) {
                 results.append(RemoteTransferResult(path: file.path, outcome: blocked.1)); continue
