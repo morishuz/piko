@@ -23,13 +23,12 @@ Available actions depend on your device. Existing files are never overwritten.
 
 ## Download
 
-**[Download Piko for macOS — Apple Silicon](https://github.com/morishuz/piko/releases/download/v0.15.4/Piko-macOS-arm64.zip)**
+**[Download Piko for macOS — Apple Silicon](https://github.com/morishuz/piko/releases/download/v0.16.0/Piko-macOS-arm64.zip)**
 
-[All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.15.4/Piko-macOS-arm64.zip.sha256)
+[All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.16.0/Piko-macOS-arm64.zip.sha256)
 
-This preview is not yet Developer ID signed or notarized.
-See the **[short user guide](docs/USER_GUIDE.md)** for installation, first-launch
-approval, safe deletion, and diagnostics.
+This preview is Developer ID signed and notarized by Apple.
+See the **[short user guide](docs/USER_GUIDE.md)** for installation, safe deletion, and diagnostics.
 
 ## Getting started
 
