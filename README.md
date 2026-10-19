@@ -27,6 +27,12 @@ Available actions depend on your device. Existing files are never overwritten.
 
 [All releases](https://github.com/morishuz/piko/releases) · [SHA-256](https://github.com/morishuz/piko/releases/download/v0.16.0/Piko-macOS-arm64.zip.sha256)
 
+Or install through our [Homebrew tap](https://github.com/morishuz/homebrew-tap):
+
+```sh
+brew install --cask morishuz/tap/piko
+```
+
 This preview is Developer ID signed and notarized by Apple.
 See the **[short user guide](docs/USER_GUIDE.md)** for installation, safe deletion, and diagnostics.
 
