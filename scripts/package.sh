@@ -23,8 +23,18 @@ cp "$NATIVE_ROOT/THIRD_PARTY_NOTICES.md" "$CONTENTS/Resources/Third Party Notice
 cp "$NATIVE_ROOT/LICENSE" "$CONTENTS/Resources/LICENSE"
 # Remove compiler debug paths before signing the distributed executables.
 xcrun strip -S "$CONTENTS/MacOS/Piko"
-codesign --force --sign - "$CONTENTS/MacOS/Piko"
-codesign --force --sign - "$APP"
+SIGNING_IDENTITY=${PIKO_SIGNING_IDENTITY:--}
+if [[ "$SIGNING_IDENTITY" == - ]]; then
+    codesign --force --sign - "$APP"
+else
+    codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp "$APP"
+    SIGNATURE=$(codesign --display --verbose=4 "$APP" 2>&1)
+    [[ "$SIGNATURE" == *"Authority=Developer ID Application:"* ]] || {
+        print -u2 'Distribution signing requires a Developer ID Application certificate.'
+        exit 1
+    }
+fi
+codesign --verify --deep --strict "$APP"
 ZIP="$DIST_DIR/Piko.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$STAGE/package.zip"
 mv -f -- "$STAGE/package.zip" "$ZIP"

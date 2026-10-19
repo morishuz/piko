@@ -22,3 +22,7 @@ dist/
 *.p12
 *.cer
 *.mobileprovision
+
+*.p8
+*.pem
+*.keychain-db

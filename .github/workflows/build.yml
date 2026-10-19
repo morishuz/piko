@@ -7,6 +7,21 @@ on:
         description: Optional version tag, which must match Info.plist
         type: string
         default: ''
+      sign-release:
+        description: Require Developer ID signing and notarization
+        type: boolean
+        default: false
+    secrets:
+      PIKO_CERTIFICATE_BASE64:
+        required: false
+      PIKO_CERTIFICATE_PASSWORD:
+        required: false
+      PIKO_APPLE_ID:
+        required: false
+      PIKO_APPLE_PASSWORD:
+        required: false
+      PIKO_TEAM_ID:
+        required: false
     outputs:
       artifact-name:
         description: Name of the uploaded ZIP and checksum artifact
@@ -19,7 +34,7 @@ permissions:
 jobs:
   build:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       # Match the local release toolchain; retain macOS 14 as the deployment target.
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
@@ -69,10 +84,28 @@ jobs:
         run: swift test --scratch-path .build-asan --sanitize address --filter robustness
       - name: Test native upload paths with Address Sanitizer
         run: swift test --scratch-path .build-upload-asan --sanitize address --filter 'UploadWireTests|SwiftUploadBackendTests|MTPUSBTests|UploadLocalSafetyTests|ActiveTransferCancellationTests|UploadTests|BinIntegrationTests|BinPreparationTests|MoveWireTests|DeleteWireTests|ShutdownTests|RangedDownloadTests|partialObject|RangedUploadTests|PartialUploadWireTests|PartialUploadTransportTests|finderPromiseCompletion|DeviceManagerTests|multipleDeviceDiagnostics|RemoteTransferTests|RemoteDropTableTests|PhotoThumbnail|ThumbnailWireTests|ThumbnailGenerationTests|RemoteFileGridTests|VideoThumbnailTests'
+      - name: Sign and notarize release
+        if: inputs.sign-release
+        env:
+          PIKO_CERTIFICATE_BASE64: ${{ secrets.PIKO_CERTIFICATE_BASE64 }}
+          PIKO_CERTIFICATE_PASSWORD: ${{ secrets.PIKO_CERTIFICATE_PASSWORD }}
+          PIKO_APPLE_ID: ${{ secrets.PIKO_APPLE_ID }}
+          PIKO_APPLE_PASSWORD: ${{ secrets.PIKO_APPLE_PASSWORD }}
+          PIKO_EXPECTED_TEAM_ID: ${{ secrets.PIKO_TEAM_ID }}
+        run: zsh scripts/ci-distribute.sh
+      - name: Remove signing material
+        if: always() && inputs.sign-release
+        run: |
+          security delete-keychain "$RUNNER_TEMP/piko-signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/piko-signing.p12"
       - name: Package release configuration
+        if: ${{ !inputs.sign-release }}
         run: |
           zsh ./scripts/package.sh
       - name: Verify packaged app
+        env:
+          PIKO_REQUIRE_NOTARIZATION: ${{ inputs.sign-release && '1' || '0' }}
+          PIKO_EXPECTED_TEAM_ID: ${{ secrets.PIKO_TEAM_ID }}
         run: zsh ./scripts/verify-package.sh
       - name: Prepare versioned ZIP and checksum
         env:
@@ -114,6 +147,9 @@ jobs:
           shasum -a 256 --check "$ARTIFACT_NAME.zip.sha256"
           mv "$ARTIFACT_NAME.zip" Piko.zip
       - name: Verify package on oldest supported macOS
+        env:
+          PIKO_REQUIRE_NOTARIZATION: ${{ inputs.sign-release && '1' || '0' }}
+          PIKO_EXPECTED_TEAM_ID: ${{ secrets.PIKO_TEAM_ID }}
         run: zsh scripts/verify-package.sh
       - name: Check app startup without attached devices
         run: |

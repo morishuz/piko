@@ -4,13 +4,14 @@ SCRIPT_DIR=${0:A:h}
 NATIVE_ROOT=${SCRIPT_DIR:h}
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/piko-apple-verify.XXXXXX")
 trap 'rm -rf -- "$STAGE"' EXIT
-ditto -x -k "$NATIVE_ROOT/dist/Piko.zip" "$STAGE"
+ZIP=${1:-"$NATIVE_ROOT/dist/Piko.zip"}
+ditto -x -k "$ZIP" "$STAGE"
 APP="$STAGE/Piko.app"
 cmp "$NATIVE_ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 cmp "$NATIVE_ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
 cmp "$NATIVE_ROOT/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/Third Party Notices.md"
 # The download contains only the app, including its required legal notices.
-python3 - "$NATIVE_ROOT/dist/Piko.zip" <<'PYTHON'
+python3 - "$ZIP" <<'PYTHON'
 import sys
 from zipfile import ZipFile
 with ZipFile(sys.argv[1]) as archive:
@@ -24,6 +25,8 @@ with ZipFile(sys.argv[1]) as archive:
         'Piko.app/Contents/Resources/Third Party Notices.md',
         'Piko.app/Contents/_CodeSignature/CodeResources',
     }
+    # Apple's stapler may add the notarization ticket to the bundle.
+    files.discard('Piko.app/Contents/CodeResources')
     assert files == expected, f'Unexpected package contents: {files ^ expected}'
 PYTHON
 for key in CFBundleName CFBundleDisplayName CFBundleExecutable; do
@@ -63,4 +66,17 @@ for binary in "$APP/Contents/MacOS/Piko"; do
     codesign --verify --strict "$binary"
 done
 codesign --verify --deep --strict "$APP"
+if [[ ${PIKO_REQUIRE_DEVELOPER_ID:-0} == 1 || ${PIKO_REQUIRE_NOTARIZATION:-0} == 1 ]]; then
+    SIGNATURE=$(codesign --display --verbose=4 "$APP" 2>&1)
+    [[ "$SIGNATURE" == *"Authority=Developer ID Application:"* ]]
+    [[ "$SIGNATURE" == *"(runtime)"* ]]
+    [[ "$SIGNATURE" == *"Timestamp="* ]]
+    if [[ -n ${PIKO_EXPECTED_TEAM_ID:-} ]]; then
+        [[ "$SIGNATURE" == *"TeamIdentifier=$PIKO_EXPECTED_TEAM_ID"* ]]
+    fi
+fi
+if [[ ${PIKO_REQUIRE_NOTARIZATION:-0} == 1 ]]; then
+    xcrun stapler validate "$APP"
+    spctl --assess --type execute --verbose=2 "$APP"
+fi
 print 'Verified Apple-only package: no third-party dylibs; no USB hardware accessed.'

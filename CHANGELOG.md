@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.15.5 — 2026-10-18
+## 0.16.0 — 2026-10-19
 
-Build 68.
+Build 69. Includes the GUI improvements prepared in 0.15.5 (build 68).
 
 ### Added
+
+- Developer ID signing and Apple notarization support for distribution builds.
 
 - Click the drive icon beside the folder path to return to the storage root.
 

@@ -11,9 +11,18 @@ permissions:
 
 jobs:
   build:
+    if: github.repository == 'morishuz/piko' && (github.ref_type == 'tag' || github.ref == 'refs/heads/main')
     uses: ./.github/workflows/build.yml
     with:
+      sign-release: true
       release-tag: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+
+    secrets:
+      PIKO_CERTIFICATE_BASE64: ${{ secrets.PIKO_CERTIFICATE_BASE64 }}
+      PIKO_CERTIFICATE_PASSWORD: ${{ secrets.PIKO_CERTIFICATE_PASSWORD }}
+      PIKO_APPLE_ID: ${{ secrets.PIKO_APPLE_ID }}
+      PIKO_APPLE_PASSWORD: ${{ secrets.PIKO_APPLE_PASSWORD }}
+      PIKO_TEAM_ID: ${{ secrets.PIKO_TEAM_ID }}
 
   draft-release:
     # Manual runs only build artifacts; only a pushed version tag drafts a release.
@@ -44,4 +53,4 @@ jobs:
             "release/Piko-macOS-arm64.zip" "release/Piko-macOS-arm64.zip.sha256" \
             --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease \
             --title "Piko $RELEASE_TAG Preview (Apple Silicon)" \
-            --notes "Apple Silicon only; requires macOS 14 or newer. Ad-hoc signed, not Developer ID signed or notarized. See the [user guide](https://github.com/$GITHUB_REPOSITORY/blob/$RELEASE_TAG/docs/USER_GUIDE.md) for installation, first-launch approval, safe deletion, and diagnostics. Review this draft and add changes and known limitations before publishing."
+            --notes "Apple Silicon only; requires macOS 14 or newer. Developer ID signed and notarized by Apple; notarization ticket included. See the [user guide](https://github.com/$GITHUB_REPOSITORY/blob/$RELEASE_TAG/docs/USER_GUIDE.md) for installation, safe deletion, and diagnostics. Review this draft and add changes and known limitations before publishing."

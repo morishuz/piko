@@ -5,17 +5,16 @@ Piko is preview software for **Apple Silicon and macOS 14 or newer**.
 ## Install and open
 
 Download Piko from the [README download link](../README.md#download), unzip it,
-then move **Piko.app** to your **Applications** folder. This preview is not yet
-Developer ID signed or notarized.
+then move **Piko.app** to your **Applications** folder.
 
-1. Open it once. If macOS blocks it because the developer cannot be verified or
-   Apple cannot check it, dismiss the warning.
-2. Go to **System Settings → Privacy & Security**, scroll down, and click
-   **Open Anyway** next to the Piko message.
-3. Confirm **Open** and enter your Mac password if prompted.
+Release downloads from version 0.16.0 are Developer ID signed and notarized by
+Apple. Open the app normally; macOS may ask you to confirm opening an app
+downloaded from the internet. No Gatekeeper override should be needed.
 
-macOS remembers this approval for that copy of the app. A new download may need
-approval again. See [Apple's opening instructions](https://support.apple.com/en-us/102445).
+Older previews and development builds may be ad-hoc signed. See
+[Apple's opening instructions](https://support.apple.com/en-us/102445) for those
+builds. If a 0.16.0 or newer release reports a verification problem, download it
+again from the official release rather than bypassing the warning.
 
 Connect your device with a USB data cable, unlock it, and select **File Transfer**
 if prompted. Close other apps using the device, then click **Connect** in Piko.
